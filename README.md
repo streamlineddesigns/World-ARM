@@ -36,4 +36,4 @@ Yeah the idea of world arm not being able to "plan in states without memories" i
 Anyways, this dumb, yet brilliant idea, it was all me. I get the credit, I get some congratulations, and now I finally have the confidence enough to pick my head up and say - "I think I might have found something". Without the delusion of actually believing I'll hear any other response but "Is this what you think you found?" followed by a cited paper or an academic roast.
 
 ### Original Diagram
-![Descriptive Alt Text](./original-diagram.png)
+![Descriptive Alt Text](./original-diagram.jpg)
