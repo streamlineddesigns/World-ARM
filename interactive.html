@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World-ARM: Associative Recall Memory Architecture</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06090f;--card:#0d1117;--card2:#161b22;--blue:#58a6ff;--cyan:#39d4d4;--purple:#bc8cff;--green:#3fb950;--orange:#f0883e;--pink:#f778ba;--red:#ff7b72;--yellow:#e3b341;--t1:#e6edf3;--t2:#8b949e;--bdr:rgba(240,246,252,0.1);--accent-blue:#4fc3f7;--accent-cyan:#00e5ff;--accent-purple:#b388ff;--accent-magenta:#ea80fc;--accent-green:#69f0ae;--accent-orange:#ffab40;--accent-red:#ff5252;--accent-yellow:#ffd740}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--cyan);border-radius:3px}
+
+/* NAV */
+.top-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:.8rem 2rem;background:rgba(6,9,15,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;transition:box-shadow .3s}
+.top-nav.scrolled{box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.nav-logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1rem;color:var(--cyan);text-decoration:none}
+.nav-links{display:flex;gap:2rem;list-style:none;margin:0;padding:0}
+.nav-links a{color:var(--t2);text-decoration:none;font-size:.82rem;font-family:'JetBrains Mono',monospace;transition:color .3s}
+.nav-links a:hover{color:var(--cyan)}
+@media(max-width:768px){.nav-links{display:none}}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative;padding:2rem;overflow:hidden}
+.hero-bg-canvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
+.hero-content{position:relative;z-index:2}
+.hero-badge{display:inline-block;padding:.35rem 1rem;border:1px solid rgba(57,212,212,.3);border-radius:20px;color:var(--cyan);font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.5rem;background:rgba(57,212,212,.06);font-family:'JetBrains Mono',monospace}
+.hero h1{font-size:clamp(2.5rem,6vw,5rem);font-weight:900;line-height:1.1;margin-bottom:.6rem;background:linear-gradient(135deg,#39d4d4,#58a6ff,#bc8cff,#f778ba);background-size:300% 300%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gradShift 8s ease infinite}
+@keyframes gradShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.hero .sub{font-size:clamp(.95rem,2vw,1.25rem);color:var(--t2);font-weight:300;font-family:'JetBrains Mono',monospace;margin-bottom:.5rem}
+.hero .tagline{font-size:clamp(.85rem,1.5vw,1.05rem);color:var(--green);font-weight:500;margin-bottom:1.5rem}
+.hero .quote{font-size:clamp(.78rem,1.3vw,.92rem);color:var(--t2);font-style:italic;max-width:520px;line-height:1.7;margin-bottom:2.5rem;opacity:.7}
+.cta{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 2rem;border-radius:8px;background:linear-gradient(135deg,rgba(57,212,212,.15),rgba(88,166,255,.15));border:1px solid rgba(57,212,212,.3);color:var(--cyan);font-weight:600;cursor:pointer;transition:all .3s;font-size:.95rem;text-decoration:none;font-family:'JetBrains Mono',monospace}
+.cta:hover{background:linear-gradient(135deg,rgba(57,212,212,.25),rgba(88,166,255,.25));box-shadow:0 0 30px rgba(57,212,212,.2);transform:translateY(-2px);color:var(--cyan)}
+.scroll-h{position:absolute;bottom:2rem;color:var(--t2);font-size:.8rem;animation:pls 2s ease-in-out infinite;font-family:'JetBrains Mono',monospace}
+@keyframes pls{0%,100%{opacity:.4;transform:translateY(0)}50%{opacity:1;transform:translateY(6px)}}
+
+/* PIPELINE SECTION */
+.flow-sec{padding:5rem 1rem 3rem;max-width:1200px;margin:0 auto}
+.sh{text-align:center;margin-bottom:2rem}
+.sh h2{font-size:clamp(1.8rem,4vw,2.5rem);font-weight:800;margin-bottom:.5rem;background:linear-gradient(90deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:inline-block}
+.sh p{color:var(--t2);font-size:1.05rem;max-width:700px;margin:0 auto;line-height:1.7}
+
+/* Progress bar */
+.prog{display:flex;align-items:center;max-width:750px;margin:0 auto 1.5rem;padding:0 .5rem}
+.pd{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;border:2px solid var(--bdr);background:var(--card);color:var(--t2);flex-shrink:0;transition:all .5s cubic-bezier(.4,0,.2,1);cursor:pointer;font-family:'JetBrains Mono',monospace}
+.pd.dn{border-color:var(--green);color:var(--green);background:rgba(63,185,80,.1)}
+.pd.ac{border-color:var(--cyan);color:#fff;background:rgba(57,212,212,.2);box-shadow:0 0 18px rgba(57,212,212,.35);transform:scale(1.2)}
+.pl{flex:1;height:2px;background:var(--bdr);transition:background .5s}
+.pl.dn{background:linear-gradient(90deg,var(--green),var(--cyan))}
+
+/* Legend */
+.legend{max-width:750px;margin:0 auto 1.5rem;display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;font-size:.78rem;font-family:'JetBrains Mono',monospace}
+.legend-item{display:flex;align-items:center;gap:.4rem;color:var(--t2)}
+.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+/* Controls */
+.ctrls{display:flex;justify-content:center;gap:.65rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.cb{padding:.5rem 1.3rem;border-radius:8px;border:1px solid var(--bdr);background:var(--card);color:var(--t2);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .25s;display:flex;align-items:center;gap:.4rem;font-family:'JetBrains Mono',monospace}
+.cb:hover{border-color:var(--blue);color:var(--blue);background:rgba(88,166,255,.08)}
+.cb.run{border-color:var(--cyan);color:var(--cyan);background:rgba(57,212,212,.1)}
+
+/* Step description box */
+.sdesc{max-width:800px;margin:0 auto 1.5rem;padding:1.2rem 1.5rem;background:var(--card);border:1px solid var(--bdr);border-radius:12px;border-left:4px solid var(--cyan);display:flex;flex-direction:column;gap:.6rem;min-height:80px;transition:border-color .4s}
+.sdesc.hl{border-left-color:var(--cyan);box-shadow:0 0 20px rgba(57,212,212,.08)}
+.sdesc .sb{padding:.2rem .7rem;border-radius:6px;font-size:.72rem;font-weight:700;white-space:nowrap;background:rgba(57,212,212,.12);color:var(--cyan);align-self:flex-start;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
+.sdesc .st{color:var(--t2);line-height:1.7;font-size:.93rem}
+.sdesc .insight{padding:.6rem 1rem;background:rgba(63,185,80,.06);border-radius:8px;border-left:3px solid var(--green);font-size:.83rem;color:var(--green);font-family:'JetBrains Mono',monospace;display:none}
+.sdesc .insight.show{display:block}
+
+/* SVG wrapper */
+.svg-w{position:relative;border:1px solid var(--bdr);border-radius:16px;background:linear-gradient(180deg,rgba(13,17,23,.95),rgba(6,9,15,.98));padding:1rem;overflow:hidden}
+.svg-w::before{content:'';position:absolute;inset:-1px;border-radius:16px;background:linear-gradient(135deg,rgba(57,212,212,.08),transparent,rgba(188,140,255,.08));pointer-events:none;z-index:0}
+.fsvg{width:100%;height:auto;display:block;position:relative;z-index:1}
+
+/* Node styles */
+.node-g{cursor:pointer}
+.node-g .ns{transition:filter .3s,stroke-width .3s,opacity .3s}
+.node-g:hover .ns{filter:brightness(1.4);stroke-width:2.5}
+.node-g .nl{fill:#e6edf3;font-family:'JetBrains Mono','Inter',sans-serif;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-size:13px}
+.node-g .nsb{fill:#8b949e;font-family:'JetBrains Mono','Inter',sans-serif;font-size:9.5px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.node-g.lit .ns{stroke-width:3;filter:brightness(1.5)drop-shadow(0 0 12px currentColor)}
+.node-g.dim .ns,.node-g.dim .nl,.node-g.dim .nsb{opacity:.15}
+
+/* Flow lines */
+.fl{fill:none;stroke-width:2;stroke-linecap:round;transition:opacity .4s}
+.fl.dim{opacity:.06}
+@keyframes dm{to{stroke-dashoffset:-24}}
+.fld{stroke-dasharray:10 6;animation:dm 1.2s linear infinite}
+
+/* Tooltip */
+.tip{position:absolute;padding:.6rem 1rem;background:#1c2333;border:1px solid var(--bdr);border-radius:8px;color:var(--t1);font-size:.82rem;pointer-events:none;opacity:0;transition:opacity .2s;z-index:50;max-width:280px;white-space:normal;box-shadow:0 4px 20px rgba(0,0,0,.5);line-height:1.5}
+.tip.show{opacity:1}
+
+/* Side panel */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;opacity:0;pointer-events:none;transition:opacity .35s;backdrop-filter:blur(3px)}
+.overlay.show{opacity:1;pointer-events:all}
+.sp{position:fixed;right:-520px;top:0;width:min(480px,94vw);height:100vh;background:var(--card);border-left:1px solid var(--bdr);z-index:1000;transition:right .4s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:2.5rem 2rem}
+.sp.show{right:0}
+.sp .xb{position:absolute;top:1rem;right:1rem;width:32px;height:32px;border-radius:8px;border:1px solid var(--bdr);background:0;color:var(--t2);cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.sp .xb:hover{border-color:var(--red);color:var(--red);background:rgba(255,123,114,.08)}
+.sp h3{font-size:1.35rem;margin-bottom:.4rem;font-weight:800}
+.sp .spb{display:inline-block;padding:.2rem .8rem;border-radius:6px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:1.2rem;font-family:'JetBrains Mono',monospace}
+.sp p{color:var(--t2);line-height:1.8;margin-bottom:1rem;font-size:.93rem}
+.sp .fb{background:rgba(57,212,212,.06);border:1px solid rgba(57,212,212,.15);border-radius:10px;padding:1rem 1.5rem;font-family:'JetBrains Mono',monospace;color:var(--cyan);text-align:center;font-size:1rem;margin:1.2rem 0;letter-spacing:.02em}
+.sp ul{color:var(--t2);padding-left:1.1rem;line-height:2;font-size:.88rem}
+.sp ul li strong{color:var(--t1)}
+
+/* Component cards */
+.cards-sec{padding:5rem 1rem;max-width:1100px;margin:0 auto}
+.component-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-top:2rem}
+.comp-card{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:1.8rem;transition:all .4s ease;cursor:default;position:relative;overflow:hidden}
+.comp-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(57,212,212,.05) 0%,transparent 60%);pointer-events:none;opacity:0;transition:opacity .3s}
+.comp-card:hover::before{opacity:1}
+.comp-card:hover{border-color:rgba(57,212,212,.3);transform:translateY(-4px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.comp-card .card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;margin-bottom:.8rem;font-family:'JetBrains Mono',monospace}
+.comp-card h5{font-size:1.05rem;font-weight:700;margin-bottom:.5rem}
+.comp-card p{color:var(--t2);font-size:.87rem;line-height:1.7}
+
+.icon-vae{background:rgba(88,166,255,.12);color:var(--blue)}
+.icon-qe{background:rgba(188,140,255,.12);color:var(--purple)}
+.icon-ve{background:rgba(63,185,80,.12);color:var(--green)}
+.icon-sh{background:rgba(57,212,212,.12);color:var(--cyan)}
+.icon-knn{background:rgba(240,136,62,.12);color:var(--orange)}
+.icon-kern{background:rgba(247,120,186,.12);color:var(--pink)}
+.icon-mem{background:rgba(227,179,65,.12);color:var(--yellow)}
+.icon-out{background:rgba(240,136,62,.12);color:var(--orange)}
+
+/* Concept blocks */
+.concept-sec{padding:5rem 1rem;background:rgba(13,17,23,.6);border-top:1px solid rgba(188,140,255,.08);border-bottom:1px solid rgba(188,140,255,.08)}
+.concept-block{background:var(--card);border:1px solid rgba(188,140,255,.12);border-radius:16px;padding:2.2rem;margin-top:1.5rem}
+.concept-block .label{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--purple);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem}
+.concept-block h3{font-size:1.2rem;font-weight:700;margin-bottom:.7rem}
+.concept-block p{color:var(--t2);line-height:1.8;font-size:.91rem}
+
+.equation-box{background:rgba(6,9,15,.8);border:1px solid rgba(57,212,212,.2);border-radius:12px;padding:1.3rem 2rem;font-family:'JetBrains Mono',monospace;font-size:clamp(.78rem,1.5vw,1rem);color:var(--cyan);text-align:center;margin:2rem auto;max-width:700px;letter-spacing:.03em}
+
+/* Comparison */
+.comparison-sec{padding:5rem 1rem;max-width:1100px;margin:0 auto}
+.comparison-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2rem}
+@media(max-width:768px){.comparison-grid{grid-template-columns:1fr}}
+.compare-card{border-radius:16px;padding:2rem;border:1px solid}
+.compare-card.traditional{background:rgba(255,123,114,.04);border-color:rgba(255,123,114,.2)}
+.compare-card.world-arm{background:rgba(63,185,80,.04);border-color:rgba(63,185,80,.2)}
+.compare-card h4{font-size:1.05rem;font-weight:700;margin-bottom:1rem}
+.compare-card.traditional h4{color:var(--red)}
+.compare-card.world-arm h4{color:var(--green)}
+.compare-card ul{list-style:none;padding:0}
+.compare-card ul li{padding:.45rem 0;color:var(--t2);font-size:.88rem;padding-left:1.6rem;position:relative}
+.compare-card ul li::before{position:absolute;left:0;font-size:.8rem}
+.compare-card.traditional ul li::before{content:'✗';color:var(--red)}
+.compare-card.world-arm ul li::before{content:'✓';color:var(--green)}
+
+footer{text-align:center;padding:3rem 1rem;border-top:1px solid var(--bdr);color:var(--t2);font-size:.82rem;font-family:'JetBrains Mono',monospace}
+
+@media(max-width:768px){.flow-sec{padding:3rem .5rem 2rem}.svg-w{padding:.5rem;border-radius:10px}.hero h1{font-size:2.2rem}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="top-nav" id="topNav">
+  <a class="nav-logo" href="#top">World-ARM</a>
+  <ul class="nav-links">
+    <li><a href="#pipeline">Architecture</a></li>
+    <li><a href="#components">Components</a></li>
+    <li><a href="#concepts">Concepts</a></li>
+    <li><a href="#comparison">Why It Matters</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="top">
+<canvas class="hero-bg-canvas" id="heroBg"></canvas>
+<div class="hero-content" data-aos="fade-up" data-aos-duration="1000">
+  <span class="hero-badge">Neural Architecture · v4</span>
+  <h1>World-ARM</h1>
+  <p class="sub">World Model with Associative Recall Memory</p>
+  <p class="tagline">Predictions grounded in memory — not hallucinated from scratch.</p>
+  <p class="quote">"What if a world model's predictions didn't start from nothing, but from what it actually remembers?"</p>
+  <a class="cta" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">Explore the Architecture ↓</a>
+</div>
+<div class="scroll-h">scroll to explore ⌄</div>
+</section>
+
+<!-- PIPELINE -->
+<section class="flow-sec" id="pipeline">
+<div class="sh" data-aos="fade-up">
+  <h2>Algorithm Pipeline</h2>
+  <p>The Hyper-ARM pipeline transforms raw observations into memory-grounded predictions. Click any node for details · Step through with controls · Keyboard: ← → Space Esc</p>
+</div>
+
+<div class="prog" id="prog" data-aos="fade-up" data-aos-delay="100">
+  <div class="pd" data-s="0">IN</div><div class="pl"></div>
+  <div class="pd" data-s="1">VAE</div><div class="pl"></div>
+  <div class="pd" data-s="2">K/Q/V</div><div class="pl"></div>
+  <div class="pd" data-s="3">HASH</div><div class="pl"></div>
+  <div class="pd" data-s="4">KNN</div><div class="pl"></div>
+  <div class="pd" data-s="5">MEM</div><div class="pl"></div>
+  <div class="pd" data-s="6">OUT</div>
+</div>
+
+<div class="legend" data-aos="fade-up" data-aos-delay="120">
+  <div class="legend-item"><span class="legend-dot" style="background:#58a6ff"></span>Input / Encoding</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#39d4d4"></span>Key / Storage Path</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#bc8cff"></span>Query / Search Path</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3fb950"></span>Value / Content Path</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#f778ba"></span>Kernel / Memory</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#f0883e"></span>Output</div>
+</div>
+
+<div class="ctrls" data-aos="fade-up" data-aos-delay="150">
+  <button class="cb" onclick="resetP()">↺ Reset</button>
+  <button class="cb" onclick="prev()">← Prev</button>
+  <button class="cb" onclick="next()">Next →</button>
+  <button class="cb" id="aBtn" onclick="togAuto()">▶ Auto</button>
+</div>
+
+<div class="sdesc" id="sBox" data-aos="fade-up" data-aos-delay="200">
+  <span class="sb" id="sBdg">Ready</span>
+  <span class="st" id="sTxt">Press <strong>Next →</strong> or <strong>Space</strong> to walk through the pipeline. Each stage illuminates on the diagram below.</span>
+  <div class="insight" id="sInsight"></div>
+</div>
+
+<div class="svg-w" data-aos="zoom-in" data-aos-delay="300">
+<svg viewBox="0 0 960 530" class="fsvg" id="mSvg">
+<defs>
+  <marker id="aB" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#58a6ff"/></marker>
+  <marker id="aC" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#39d4d4"/></marker>
+  <marker id="aP" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#bc8cff"/></marker>
+  <marker id="aG" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#3fb950"/></marker>
+  <marker id="aK" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#f778ba"/></marker>
+  <marker id="aO" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#f0883e"/></marker>
+  <marker id="aGray" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#8b949e"/></marker>
+  <pattern id="grd" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(240,246,252,.03)" stroke-width=".5"/></pattern>
+</defs>
+<rect width="960" height="530" fill="url(#grd)"/>
+
+<!-- CONNECTIONS -->
+<path id="p01" class="fl fld" d="M120 65 L120 100" stroke="#58a6ff" marker-end="url(#aB)" data-s="0"/>
+<path id="p1k" class="fl fld" d="M185 125 L260 125" stroke="#39d4d4" marker-end="url(#aC)" data-s="1"/>
+<path id="p1q" class="fl fld" d="M105 155 L105 200" stroke="#bc8cff" marker-end="url(#aP)" data-s="1"/>
+<path id="p1v" class="fl fld" d="M150 155 L220 200" stroke="#3fb950" marker-end="url(#aG)" data-s="1"/>
+
+<!-- Actions to concat -->
+<path id="pact" class="fl fld" d="M60 290 L83 310" stroke="#8b949e" marker-end="url(#aGray)" data-s="2"/>
+
+<!-- QE to concat -->
+<path id="pqc" class="fl fld" d="M105 250 L100 295" stroke="#bc8cff" marker-end="url(#aP)" data-s="2"/>
+
+<!-- Concat to Q -->
+<path id="pcq" class="fl fld" d="M95 340 L95 365" stroke="#bc8cff" marker-end="url(#aP)" data-s="2"/>
+
+<path id="pvv" class="fl fld" d="M235 250 L235 310" stroke="#3fb950" marker-end="url(#aG)" data-s="2"/>
+
+<path id="pkh" class="fl fld" d="M330 125 L420 125" stroke="#39d4d4" marker-end="url(#aC)" data-s="2"/>
+<text x="375" y="112" fill="#8b949e" font-size="10" text-anchor="middle" font-style="italic" font-family="JetBrains Mono,monospace">insert</text>
+
+<path id="pqs" class="fl fld" d="M135 385 C280 385,340 250,420 165" stroke="#bc8cff" marker-end="url(#aP)" data-s="3"/>
+<text x="270" y="300" fill="#bc8cff" font-size="10" text-anchor="middle" font-weight="600" transform="rotate(-30,270,300)" font-family="JetBrains Mono,monospace">search</text>
+
+<path id="phk" class="fl fld" d="M550 125 L630 125" stroke="#39d4d4" marker-end="url(#aC)" data-s="3"/>
+<path id="pkn" class="fl fld" d="M720 125 L800 125" stroke="#f778ba" marker-end="url(#aK)" data-s="4"/>
+<path id="pke" class="fl fld" d="M860 155 L860 210 L680 210" stroke="#f778ba" marker-end="url(#aK)" data-s="4"/>
+<text x="770" y="198" fill="#8b949e" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">Σ vals × weights</text>
+
+<path id="psm" class="fl fld" d="M640 240 L640 310" stroke="#f778ba" marker-end="url(#aK)" data-s="5"/>
+<path id="pvo" class="fl fld" d="M280 355 L400 450" stroke="#3fb950" marker-end="url(#aG)" data-s="6"/>
+<path id="pmo" class="fl fld" d="M640 370 L540 450" stroke="#f778ba" marker-end="url(#aK)" data-s="6"/>
+
+<!-- NODES -->
+<g class="node-g" data-node="input" data-s="0" onclick="openP('input')" data-tip="Raw observation at timestep t — game frame, sensors, state vector">
+  <rect class="ns" x="65" y="35" width="110" height="38" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+  <text class="nl" x="120" y="54">Input</text>
+</g>
+
+<g class="node-g" data-node="vae" data-s="1" onclick="openP('vae')" data-tip="VAE: compresses input into structured latent z for K/Q/V encoding">
+  <rect class="ns" x="50" y="100" width="135" height="55" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+  <text class="nl" x="117" y="122">VAE</text>
+  <text class="nsb" x="117" y="140">Encoder</text>
+</g>
+
+<g class="node-g" data-node="key" data-s="2" onclick="openP('key')" data-tip="Key vector — index for spatial hash memory insertion">
+  <circle class="ns" cx="295" cy="125" r="28" fill="#0d2233" stroke="#39d4d4" stroke-width="1.5"/>
+  <text class="nl" x="295" y="126">K</text>
+</g>
+
+<g class="node-g" data-node="qe" data-s="2" onclick="openP('qe')" data-tip="Query Encoder — projects latent z into query space">
+  <circle class="ns" cx="105" cy="225" r="24" fill="#1a0d33" stroke="#bc8cff" stroke-width="1.5"/>
+  <text class="nl" x="105" y="226" font-size="12">QE</text>
+</g>
+
+<g class="node-g" data-node="ve" data-s="2" onclick="openP('ve')" data-tip="Value Encoder — current state content representation">
+  <circle class="ns" cx="235" cy="225" r="24" fill="#0d261a" stroke="#3fb950" stroke-width="1.5"/>
+  <text class="nl" x="235" y="226" font-size="12">VE</text>
+</g>
+
+<!-- Actions node -->
+<g class="node-g" data-node="actions" data-s="2" onclick="openP('actions')" data-tip="Current action(s) at timestep t — combined with QE for full context">
+  <rect class="ns" x="20" y="265" width="80" height="34" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.2"/>
+  <text class="nl" x="60" y="283" font-size="11" fill="#8b949e">Actions</text>
+</g>
+
+<!-- Concat node -->
+<g class="node-g" data-node="concat" data-s="2" onclick="openP('concat')" data-tip="⊕ — merges QE output with action info for full query context">
+  <circle class="ns" cx="95" cy="318" r="14" fill="#1a0d33" stroke="#bc8cff" stroke-width="1.2"/>
+  <text class="nl" x="95" y="320" font-size="13" fill="#bc8cff">⊕</text>
+</g>
+
+<g class="node-g" data-node="query" data-s="3" onclick="openP('query')" data-tip="Final query: 'what situation + action' for memory retrieval">
+  <rect class="ns" x="55" y="365" width="80" height="44" rx="10" fill="#1a0d33" stroke="#bc8cff" stroke-width="1.5"/>
+  <text class="nl" x="95" y="388">Q</text>
+</g>
+
+<g class="node-g" data-node="value" data-s="2" onclick="openP('value')" data-tip="[V] — what the system perceives right now, before memory augmentation">
+  <rect class="ns" x="195" y="315" width="82" height="44" rx="10" fill="#0d261a" stroke="#3fb950" stroke-width="1.5"/>
+  <text class="nl" x="236" y="338">[V]</text>
+</g>
+
+<g class="node-g" data-node="spatialhash" data-s="3" onclick="openP('spatialhash')" data-tip="Non-parametric episodic memory with O(1) lookup — MFEC-style insertion">
+  <rect class="ns" x="420" y="95" width="130" height="55" rx="12" fill="#161b22" stroke="#39d4d4" stroke-width="1.5"/>
+  <text class="nl" x="485" y="117" font-size="12">Spatial</text>
+  <text class="nl" x="485" y="137" font-size="11">Hash</text>
+</g>
+
+<g class="node-g" data-node="knn" data-s="4" onclick="openP('knn')" data-tip="K-Nearest Neighbors — finds K closest stored memories to query">
+  <rect class="ns" x="630" y="100" width="90" height="50" rx="10" fill="#161b22" stroke="#39d4d4" stroke-width="1.5"/>
+  <text class="nl" x="675" y="126">KNN</text>
+</g>
+
+<g class="node-g" data-node="kernel" data-s="4" onclick="openP('kernel')" data-tip="Kernel function: inverse-distance or Gaussian similarity weighting">
+  <rect class="ns" x="800" y="100" width="105" height="50" rx="10" fill="#1f0d2b" stroke="#f778ba" stroke-width="1.5"/>
+  <text class="nl" x="852" y="126">Kernel</text>
+</g>
+
+<g class="node-g" data-node="sigma" data-s="4" onclick="openP('sigma')" data-tip="Σ — weighted sum of retrieved values: experience-grounded blend">
+  <circle class="ns" cx="640" cy="220" r="18" fill="#1f0d2b" stroke="#f778ba" stroke-width="1.5"/>
+  <text class="nl" x="640" y="222" font-size="17">Σ</text>
+</g>
+
+<g class="node-g" data-node="memory" data-s="5" onclick="openP('memory')" data-tip="[M] — recalled memory from actual past experiences, not hallucinated">
+  <rect class="ns" x="590" y="315" width="100" height="50" rx="10" fill="#1f0d2b" stroke="#f778ba" stroke-width="1.5"/>
+  <text class="nl" x="640" y="342">[M]</text>
+</g>
+
+<!-- ⊕ Combine -->
+<g class="node-g" data-node="combine" data-s="6" onclick="openP('combine')" data-tip="⊕ — fusion of current perception [V] with recalled memory [M]">
+  <circle class="ns" cx="480" cy="460" r="14" fill="#2a1d00" stroke="#f0883e" stroke-width="1.5"/>
+  <text class="nl" x="480" y="462" font-size="15" fill="#f0883e">⊕</text>
+</g>
+
+<!-- OUTPUT -->
+<g class="node-g" data-node="output" data-s="6" onclick="openP('output')" data-tip="Memory-grounded output — prediction anchored in real experience">
+  <rect class="ns" x="415" y="485" width="130" height="38" rx="10" fill="#161b22" stroke="#f0883e" stroke-width="2"/>
+  <text class="nl" x="480" y="505" fill="#f0883e" font-size="12">V⊕M → Output</text>
+</g>
+
+<!-- Animated particles -->
+<circle r="4" fill="#58a6ff" opacity="0"><animateMotion dur="1.5s" repeatCount="indefinite" begin="0s"><mpath href="#p01"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.5s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#39d4d4" opacity="0"><animateMotion dur="1.8s" repeatCount="indefinite" begin=".3s"><mpath href="#p1k"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.8s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#bc8cff" opacity="0"><animateMotion dur="1.5s" repeatCount="indefinite" begin=".5s"><mpath href="#p1q"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.5s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#3fb950" opacity="0"><animateMotion dur="1.6s" repeatCount="indefinite" begin=".4s"><mpath href="#p1v"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.6s" repeatCount="indefinite"/></circle>
+<circle r="3" fill="#8b949e" opacity="0"><animateMotion dur="1.2s" repeatCount="indefinite" begin=".7s"><mpath href="#pact"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.2s" repeatCount="indefinite"/></circle>
+<circle r="3" fill="#bc8cff" opacity="0"><animateMotion dur="1.3s" repeatCount="indefinite" begin=".8s"><mpath href="#pqc"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.3s" repeatCount="indefinite"/></circle>
+<circle r="3" fill="#bc8cff" opacity="0"><animateMotion dur="1.1s" repeatCount="indefinite" begin="1s"><mpath href="#pcq"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.1s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#39d4d4" opacity="0"><animateMotion dur="2s" repeatCount="indefinite" begin=".8s"><mpath href="#pkh"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="2s" repeatCount="indefinite"/></circle>
+<circle r="3" fill="#3fb950" opacity="0"><animateMotion dur="1.4s" repeatCount="indefinite" begin="1.1s"><mpath href="#pvv"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.4s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#bc8cff" opacity="0"><animateMotion dur="2.5s" repeatCount="indefinite" begin="1.5s"><mpath href="#pqs"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="2.5s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#39d4d4" opacity="0"><animateMotion dur="1.8s" repeatCount="indefinite" begin="2s"><mpath href="#phk"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.8s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#f778ba" opacity="0"><animateMotion dur="1.6s" repeatCount="indefinite" begin="2.5s"><mpath href="#pkn"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.6s" repeatCount="indefinite"/></circle>
+<circle r="3" fill="#f778ba" opacity="0"><animateMotion dur="2.2s" repeatCount="indefinite" begin="3s"><mpath href="#pke"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="2.2s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#f778ba" opacity="0"><animateMotion dur="1.5s" repeatCount="indefinite" begin="3.5s"><mpath href="#psm"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="1.5s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#3fb950" opacity="0"><animateMotion dur="2s" repeatCount="indefinite" begin="4s"><mpath href="#pvo"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="2s" repeatCount="indefinite"/></circle>
+<circle r="3.5" fill="#f778ba" opacity="0"><animateMotion dur="2s" repeatCount="indefinite" begin="4.3s"><mpath href="#pmo"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="2s" repeatCount="indefinite"/></circle>
+
+</svg>
+<div class="tip" id="tip"></div>
+</div>
+</section>
+
+<!-- COMPONENTS -->
+<section class="cards-sec" id="components">
+<div class="sh" data-aos="fade-up"><h2>Core Components</h2><p>Each module plays a precise role in the memory-augmented prediction pipeline.</p></div>
+<div class="component-grid">
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="0" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-vae">VAE</div>
+    <h5 style="color:var(--blue)">Variational Autoencoder</h5>
+    <p>Compresses raw input (game frames, observations) into a structured latent space. The probabilistic encoding enables meaningful projections into keys, queries, and values — the three pillars of memory-augmented attention.</p>
+  </div>
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="80" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-qe">QE</div>
+    <h5 style="color:var(--purple)">Query Encoder</h5>
+    <p>Transforms latent embedding + current actions into query Q. The actions are critical: they encode not just "where am I?" but "what am I doing?" — giving the memory search full situational context.</p>
+  </div>
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="160" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-ve">VE</div>
+    <h5 style="color:var(--green)">Value Encoder</h5>
+    <p>Produces [V] — the current state's perceptual content representation. This is what the system "sees right now," independent of memory. It gets fused with retrieved memory [M] for the final output.</p>
+  </div>
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="240" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-sh">SH</div>
+    <h5 style="color:var(--cyan)">Spatial Hash (Memory Store)</h5>
+    <p>Non-parametric episodic memory with O(1) approximate lookup. Keys (latent embeddings) are inserted MFEC-style — directly, with no gradient updates. A second hash can serve as short-term memory for few-shot adaptation.</p>
+  </div>
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="320" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-knn">KNN</div>
+    <h5 style="color:var(--orange)">K-Nearest Neighbors</h5>
+    <p>Retrieves the K closest stored memories to the query. The spatial hash accelerates this to near-constant time. Returns candidate keys and their associated values for kernel-weighted blending.</p>
+  </div>
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="400" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-kern">K<sub>w</sub></div>
+    <h5 style="color:var(--pink)">Kernel Weighting</h5>
+    <p>Applies a similarity kernel (inverse-distance, Gaussian) to weight neighbors. Closer memories dominate: the output Σ(values × weights) is a soft, experience-grounded blend rather than a single point estimate.</p>
+  </div>
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="480" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-mem">[M]</div>
+    <h5 style="color:var(--yellow)">Memory Output</h5>
+    <p>The aggregated recall vector. This is the core innovation: instead of generating predictions from learned weights alone, the system starts from what it actually remembers about similar situations.</p>
+  </div>
+  <div class="comp-card" data-aos="fade-up" data-aos-delay="560" onmousemove="cardMM(event,this)">
+    <div class="card-icon icon-out">⊕→</div>
+    <h5 style="color:var(--orange)">V ⊕ M → Output</h5>
+    <p>Fusion of current perception [V] with recalled memory [M]. Can be concatenation, addition, or learned gating. The result: a prediction grounded in real experience — next state, action values, or world model forecast.</p>
+  </div>
+</div>
+</section>
+
+<!-- CONCEPTS -->
+<section class="concept-sec" id="concepts">
+<div class="container">
+  <div data-aos="fade-up">
+    <div class="sh"><h2 style="background:linear-gradient(90deg,var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Key Concepts</h2>
+    <p>The architectural decisions and principles behind World-ARM.</p></div>
+  </div>
+  <div class="equation-box" data-aos="fade-up" data-aos-delay="100">
+    Output = [ V(state<sub>t</sub>) ⊕ M(Q(state<sub>t</sub>, action<sub>t</sub>) → SH → KNN → Kernel) ] → state<sub>t+1</sub>
+  </div>
+  <div class="concept-block" data-aos="fade-up" data-aos-delay="150">
+    <div class="label">Core Principle</div>
+    <h3>Memory-First Predictions</h3>
+    <p>Traditional world models (Ha & Schmidhuber, 2018) generate future states purely from learned weights — effectively hallucinating. World-ARM starts every prediction from a retrieved memory: the spatial hash stores past (state, action, next-state) transitions. When predicting, the system first recalls similar experiences, then refines. This grounds predictions in actual experience and dramatically reduces hallucination, especially in multi-step rollouts.</p>
+  </div>
+  <div class="concept-block" data-aos="fade-up" data-aos-delay="200">
+    <div class="label">Architecture</div>
+    <h3>Dual-Block Design</h3>
+    <p>Two communicating ARM blocks: the <strong>Action ARM</strong> for action prediction and the <strong>World ARM</strong> for future latent state prediction. This separation provides modularity, interpretability, and algorithmic control. The Action ARM decides what to do; the World ARM predicts what will happen — each grounded in their own memory stores. A residual value-conditioned network refines World ARM predictions beyond raw memory recall.</p>
+  </div>
+  <div class="concept-block" data-aos="fade-up" data-aos-delay="250">
+    <div class="label">Memory Management</div>
+    <h3>MFEC-Style Insertion + Dual Spatial Hash</h3>
+    <p>Memory insertion follows Model-Free Episodic Control: experiences stored directly with latent keys, no gradient updates. A second spatial hash serves as short-term memory, with dynamic routing between long-term and short-term stores. When short-term wins retrieval, the system is learning from live experience — enabling few-shot adaptation to novel situations.</p>
+  </div>
+  <div class="concept-block" data-aos="fade-up" data-aos-delay="300">
+    <div class="label">Future Integration</div>
+    <h3>MCTS Over Memory-Grounded Predictions</h3>
+    <p>With the dual-block setup, Monte Carlo Tree Search becomes natural. World ARM predicts future latent states (starting from memory, refined by residual value-conditioned projection), while Action ARM evaluates candidate moves. MCTS plans over these memory-grounded predictions — search that's anchored in experience, not hallucination. This is the natural "version 5" evolution of the architecture.</p>
+  </div>
+</div>
+</section>
+
+<!-- COMPARISON -->
+<section class="comparison-sec" id="comparison">
+<div class="sh" data-aos="fade-up"><h2>Why It Matters</h2><p>The fundamental difference between predicting from weights vs. predicting from memories.</p></div>
+<div class="comparison-grid" data-aos="fade-up" data-aos-delay="150">
+  <div class="compare-card traditional">
+    <h4>Traditional World Models</h4>
+    <ul>
+      <li>Predictions generated entirely from learned weights</li>
+      <li>Hallucination compounds over multi-step rollouts</li>
+      <li>No episodic grounding in actual experience</li>
+      <li>Slow adaptation to novel situations</li>
+      <li>Opaque prediction provenance — can't inspect why</li>
+      <li>Single monolithic prediction path</li>
+    </ul>
+  </div>
+  <div class="compare-card world-arm">
+    <h4>World-ARM</h4>
+    <ul>
+      <li>Predictions start from retrieved memories</li>
+      <li>Memory anchoring reduces drift over rollouts</li>
+      <li>Episodic store grounds predictions in real experience</li>
+      <li>Dual hash enables few-shot live adaptation</li>
+      <li>Retrievals are inspectable and interpretable</li>
+      <li>Modular dual-block design (Action ARM + World ARM)</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<footer><p>World-ARM: Associative Recall Memory Architecture — Conceptual Design v4</p><p style="margin-top:.5rem;opacity:.5">"I think I might have found something."</p></footer>
+
+<!-- Side panel + overlay -->
+<div class="overlay" id="ov" onclick="closeP()"></div>
+<div class="sp" id="sp"><button class="xb" onclick="closeP()">✕</button><div id="spc"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script>
+AOS.init({duration:700,once:true,offset:40});
+function cardMM(e,el){const r=el.getBoundingClientRect();el.style.setProperty('--mx',((e.clientX-r.left)/r.width*100)+'%');el.style.setProperty('--my',((e.clientY-r.top)/r.height*100)+'%');}
+
+// Nav scroll effect
+window.addEventListener('scroll',()=>{document.getElementById('topNav').classList.toggle('scrolled',window.scrollY>50)});
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',function(e){e.preventDefault();const t=document.querySelector(this.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth'});}));
+
+// ============================================
+// HERO BACKGROUND PARTICLES
+// ============================================
+(function(){
+  const c=document.getElementById('heroBg'),ctx=c.getContext('2d');let pts=[];
+  function resize(){c.width=window.innerWidth;c.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  class P{constructor(){this.reset();}reset(){this.x=Math.random()*c.width;this.y=Math.random()*c.height;this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;this.r=Math.random()*1.8+.5;this.a=Math.random()*.2+.06;}update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>c.width)this.vx*=-1;if(this.y<0||this.y>c.height)this.vy*=-1;}draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=`rgba(57,212,212,${this.a})`;ctx.fill();}}
+  for(let i=0;i<55;i++)pts.push(new P());
+  function anim(){ctx.clearRect(0,0,c.width,c.height);pts.forEach(p=>{p.update();p.draw();});for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<130){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(57,212,212,${.04*(1-d/130)})`;ctx.lineWidth=.5;ctx.stroke();}}requestAnimationFrame(anim);}
+  anim();
+})();
+
+// ============================================
+// NODE INFO (Side Panel) — enriched content from Website #2
+// ============================================
+const NI={
+input:{t:"Input Observation",b:"Data Source",bc:"#58a6ff",d:"A raw observation enters — a game frame at timestep t, the sensory data that the agent perceives. This is the starting point: raw pixels, sensor readings, or any environmental signal. In the World-ARM variant, the input also includes the current action, making predictions conditioned on 'what happens if I do this?'",f:"x<sub>t</sub> ∈ ℝ<sup>d</sup>",li:["Raw environment observation at timestep t","Any modality: vision, text, sensors","In World-ARM, input is conditioned on actions","Fed directly into VAE encoder for compression"]},
+vae:{t:"VAE — Variational Autoencoder",b:"Encoder",bc:"#58a6ff",d:"Compresses high-dimensional input into a compact latent code z. Unlike a plain autoencoder, the VAE's probabilistic structure ensures the latent space is smooth and structured — critical for meaningful downstream projections into Key, Query, and Value streams.",f:"z = μ(x) + σ(x) · ε, &nbsp; ε ~ 𝒩(0, I)",li:["<strong>K:</strong> Latent key for spatial hash indexing","<strong>QE:</strong> Query encoding for memory search","<strong>VE:</strong> Value encoding for semantic content","Probabilistic encoding → smooth, structured latent space","Separates addressing (K/QE) from content (VE)"]},
+key:{t:"K — Key Vector",b:"Addressing",bc:"#39d4d4",d:"Latent vector used as address for storing the current observation in the spatial hash table. Similar inputs produce nearby keys, enabling locality-sensitive retrieval.",f:"K = f<sub>key</sub>(z)",li:["Determines memory storage location","Fed INTO spatial hash for MFEC-style indexing","Similar inputs → nearby keys (locality)","No gradient updates needed for storage"]},
+qe:{t:"QE — Query Encoder",b:"Search",bc:"#bc8cff",d:"Projects the VAE latent embedding into query space. Combined with current actions at the ⊕ node to form the complete query context — encoding not just 'where am I?' but 'what am I doing?'",f:"QE = f<sub>query</sub>(z)",li:["Separate from Key for asymmetric addressing","Optimized for recall, not storage","Combined with Actions for full situational context","Forms final query Q after concatenation"]},
+ve:{t:"VE — Value Encoder",b:"Content",bc:"#3fb950",d:"Carries semantic content of current observation. Becomes [V] — what the system 'sees right now,' independent of memory. Fused with retrieved memory [M] for final output.",f:"VE = f<sub>value</sub>(z) → [V]",li:["Represents WHAT the input contains","Independent of memory addressing","'Current perception' signal in V⊕M fusion","Grounds output in present observation"]},
+actions:{t:"Actions",b:"Context",bc:"#8b949e",d:"Current action(s) at timestep t. Combined with the Query Encoder output via concatenation (⊕) to give the memory search full situational context. The actions encode 'what am I doing?' — critical for predicting what happens next.",f:"a<sub>t</sub> ∈ Action Space",li:["Current agent action(s)","Combined with QE at ⊕ for full query context","Encodes 'what am I doing?' not just 'where am I?'","Essential for conditioned world model predictions"]},
+concat:{t:"⊕ — Query Concatenation",b:"Merge",bc:"#bc8cff",d:"Merges the Query Encoder output with action information to form the complete query context. This ensures memory search considers both the current state AND the intended action.",f:"⊕ : concat(QE, a<sub>t</sub>)",li:["Combines state representation with action","Produces contextualized query for memory search","Enables action-conditioned retrieval","Output feeds directly into Query Q"]},
+query:{t:"Q — Query",b:"Search Key",bc:"#bc8cff",d:"Final query vector representing 'what situation + action' — sent to SEARCH the spatial hash for relevant past experiences. This is the full situational context for memory retrieval.",f:"Q = transform(QE ⊕ a<sub>t</sub>)",li:["Used exclusively for memory retrieval","Searches spatial hash for nearest neighbors","Incorporates both state and action context","Asymmetric to Key — optimized for search"]},
+value:{t:"[V] — Value Representation",b:"Current Content",bc:"#3fb950",d:"Processed value encoding — what the model perceives NOW before memory augmentation. One half of the final V⊕M fusion. Ensures the output stays grounded in current perception.",f:"[V] = process(VE)",li:["Direct encoding of current observation","One half of final V⊕M fusion","Grounds output in current perception","Independent of memory retrieval"]},
+spatialhash:{t:"Spatial Hash Table",b:"Memory Structure",bc:"#39d4d4",d:"Non-parametric episodic memory with O(1) approximate nearest-neighbor lookup. MFEC-style: keys are inserted directly with no gradient updates needed. A second spatial hash can serve as short-term memory with dynamic routing between long-term and short-term stores.",f:"bucket = hash(K) → {K₁, K₂, …, Kₙ}",li:["Keys stored (IN) during experience accumulation","Queries (Q) search for nearby keys","O(1) average vs O(n) brute force","MFEC-style: direct insertion, no gradients","Optional 2nd hash for short-term memory","Similar experiences cluster in same buckets"]},
+knn:{t:"KNN — K-Nearest Neighbors",b:"Retrieval",bc:"#39d4d4",d:"Finds the K closest stored memories from spatial hash bucket candidates. The spatial hash accelerates this to near-constant time. Returns candidate keys and their associated values for kernel-weighted blending.",f:"neighbors = top-k(sim(Q, K<sub>i</sub>))",li:["K closest keys to query Q","Operates on spatial hash subset (fast)","Similarity: cosine, Euclidean, or learned","Passes candidates to Kernel for weighting"]},
+kernel:{t:"Kernel Function",b:"Weighting",bc:"#f778ba",d:"Converts raw distances into smooth weights. Applies similarity kernel (inverse-distance, Gaussian) so closer memories dominate. Normalized weights ensure a proper soft blend.",f:"w<sub>i</sub> = K(Q, K<sub>i</sub>) / Σ<sub>j</sub> K(Q, K<sub>j</sub>)",li:["Closer = higher weight","Gaussian: w = exp(-‖Q-K‖²/2σ²)","Inverse distance: w = 1/d(Q,K)","Weights normalized to sum to 1","Feeds into Σ weighted aggregation"]},
+sigma:{t:"Σ — Weighted Aggregation",b:"Aggregation",bc:"#f778ba",d:"Combines retrieved memory values weighted by kernel scores. The output is a soft, experience-grounded blend rather than a single point estimate — this IS the recalled memory [M].",f:"[M] = Σ<sub>i</sub> w<sub>i</sub> · value<sub>i</sub>",li:["Weighted sum of stored neighbor values","Kernel weights determine contribution","Smooth continuous retrieval","Produces memory vector [M]","Not a point estimate — soft aggregate"]},
+memory:{t:"[M] — Retrieved Memory",b:"Memory Output",bc:"#f778ba",d:"The aggregated recall vector — the core innovation. Instead of generating predictions from learned weights alone, the system starts from what it actually remembers about similar situations. [M] is assembled from actual past experiences, not hallucinated.",f:"[M] = Σ values × weights",li:["Grounded in REAL past experiences","Not hallucinated from learned weights","The prediction starts from real data","Combined with [V] for final output","Quality depends on memory coverage + kernel"]},
+combine:{t:"⊕ — Fusion Operator",b:"Combination",bc:"#f0883e",d:"Fuses current perception [V] with recalled memory [M]. Can be concatenation, element-wise addition, or a learned gating mechanism — combining 'what I see now' with 'what I remember.'",f:"⊕ : concat | add | gate(V, M)",li:["Concat: [V; M] — preserves all information","Add: V + M — same dimensionality","Gate: g·V + (1-g)·M — learned trade-off","In dual-block: each ARM has its own fusion"]},
+output:{t:"V⊕M → Output",b:"Final Result",bc:"#f0883e",d:"The final prediction is anchored in real experience. For the World-ARM, this predicts the next latent state. For the Action ARM, action values. Both are memory-grounded, not hallucinated. With this output, MCTS can plan over memory-grounded predictions.",f:"Output = f<sub>out</sub>([V] ⊕ [M])",li:["[V] = current perception","[M] = historical grounding from real data","Eliminates hallucination","Used for prediction, planning, action","MCTS can search over these outputs"]}
+};
+
+// ============================================
+// STEP WALKTHROUGH — enriched descriptions from Website #2
+// ============================================
+const STEPS=[
+{nodes:['input'],title:'Step 1 / 7 — Input Observation',
+ text:'A raw observation enters — a game frame at timestep t, the sensory data that the agent perceives. This is the starting point.',
+ insight:'💡 In the World-ARM variant, the input also includes the current action, making predictions conditioned on "what happens if I do this?"'},
+{nodes:['input','vae'],title:'Step 2 / 7 — VAE Latent Encoding',
+ text:'The Variational Autoencoder compresses high-dimensional input into compact latent code z. The probabilistic structure ensures the latent space is smooth and structured.',
+ insight:'💡 The VAE latent z branches three ways: → Key (for memory), → Query Encoder (for search), → Value Encoder (for perception).'},
+{nodes:['vae','key','qe','ve','actions','concat','query','value'],title:'Step 3 / 7 — Key / Query / Value Projection',
+ text:'Three parallel branches from VAE: Key K indexes into memory. Query Encoder QE combines with Actions at ⊕ to form Q — the full situational context. Value Encoder VE produces [V] — current perception.',
+ insight:'💡 This mirrors Key-Query-Value attention, but operates over an external episodic memory store rather than sequence elements.'},
+{nodes:['key','query','spatialhash'],title:'Step 4 / 7 — Memory Store & Search',
+ text:'Key K is inserted into the Spatial Hash (MFEC-style: direct, non-parametric, no gradient updates). Query Q searches the hash for similar past experiences. O(1) approximate lookup.',
+ insight:'💡 A second spatial hash can serve as short-term memory. Dynamic routing between the two enables few-shot adaptation.'},
+{nodes:['spatialhash','knn','kernel','sigma'],title:'Step 5 / 7 — Retrieval & Kernel Aggregation',
+ text:'KNN finds K nearest neighbors. The Kernel weights each by similarity (inverse-distance, Gaussian). The weighted sum Σ(values × weights) produces [M] — a soft aggregate of relevant memories.',
+ insight:'💡 This is the core innovation: [M] is not hallucinated. It\'s assembled from actual past experiences. The prediction starts from real data.'},
+{nodes:['sigma','memory'],title:'Step 6 / 7 — Memory Output',
+ text:'Weighted aggregation produces [M] — the system\'s recall of similar past experiences. Instead of generating from scratch, the prediction starts from what the model actually remembers.',
+ insight:'💡 In the dual-block design, both Action ARM and World ARM produce their own [M] from separate memory stores.'},
+{nodes:['value','memory','combine','output'],title:'Step 7 / 7 — Fusion & Output',
+ text:'Current perception [V] ⊕ recalled memory [M] → Output. The final prediction is anchored in real experience, not hallucinated from learned weights alone.',
+ insight:'💡 With this output, MCTS can plan over memory-grounded predictions — search anchored in experience, not hallucination.'}
+];
+
+let cur=-1,autoI=null;
+
+function upd(i){
+  cur=i;
+  document.querySelectorAll('.pd').forEach((d,j)=>{d.classList.remove('dn','ac');if(j<i)d.classList.add('dn');if(j===i)d.classList.add('ac')});
+  document.querySelectorAll('.pl').forEach((l,j)=>{l.classList.remove('dn');if(j<i)l.classList.add('dn')});
+  const s=STEPS[i];
+  if(s){
+    document.getElementById('sBdg').textContent=s.title;
+    document.getElementById('sTxt').innerHTML=s.text;
+    document.getElementById('sBox').classList.add('hl');
+    const ins=document.getElementById('sInsight');
+    if(s.insight){ins.innerHTML=s.insight;ins.classList.add('show')}else{ins.classList.remove('show')}
+    document.querySelectorAll('.node-g').forEach(n=>{n.classList.remove('lit','dim');if(s.nodes.includes(n.dataset.node))n.classList.add('lit');else n.classList.add('dim')});
+    document.querySelectorAll('.fl').forEach(l=>{const ls=parseInt(l.dataset.s);l.classList.remove('dim');if(ls>i)l.classList.add('dim')});
+  }
+}
+
+function next(){if(cur<STEPS.length-1)upd(cur+1)}
+function prev(){if(cur>0)upd(cur-1)}
+function resetP(){
+  stopA();cur=-1;
+  document.querySelectorAll('.pd').forEach(d=>d.classList.remove('dn','ac'));
+  document.querySelectorAll('.pl').forEach(l=>l.classList.remove('dn'));
+  document.querySelectorAll('.node-g').forEach(n=>n.classList.remove('lit','dim'));
+  document.querySelectorAll('.fl').forEach(l=>l.classList.remove('dim'));
+  document.getElementById('sBdg').textContent='Ready';
+  document.getElementById('sTxt').innerHTML='Press <strong>Next →</strong> or <strong>Space</strong> to walk through the pipeline. Each stage illuminates on the diagram.';
+  document.getElementById('sInsight').classList.remove('show');
+  document.getElementById('sBox').classList.remove('hl');
+}
+
+function togAuto(){
+  if(autoI)return stopA();
+  const b=document.getElementById('aBtn');b.textContent='⏸ Pause';b.classList.add('run');
+  if(cur>=STEPS.length-1)resetP();
+  autoI=setInterval(()=>{if(cur<STEPS.length-1)next();else stopA()},3000);
+  if(cur<0)next();
+}
+function stopA(){clearInterval(autoI);autoI=null;const b=document.getElementById('aBtn');b.textContent='▶ Auto';b.classList.remove('run')}
+
+function openP(id){
+  const n=NI[id];if(!n)return;
+  document.getElementById('spc').innerHTML=`<h3>${n.t}</h3><span class="spb" style="background:${n.bc}18;color:${n.bc};border:1px solid ${n.bc}33">${n.b}</span><p>${n.d}</p><div class="fb">${n.f}</div><h6 style="margin-top:1.5rem;margin-bottom:.5rem;color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:.85rem">Key Points</h6><ul>${n.li.map(l=>`<li>${l}</li>`).join('')}</ul>`;
+  document.getElementById('sp').classList.add('show');
+  document.getElementById('ov').classList.add('show');
+}
+function closeP(){document.getElementById('sp').classList.remove('show');document.getElementById('ov').classList.remove('show')}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeP();
+  if(e.key==='ArrowRight')next();
+  if(e.key==='ArrowLeft')prev();
+  if(e.key===' '){e.preventDefault();togAuto()}
+});
+
+// Progress dot click
+document.querySelectorAll('.pd').forEach(d=>d.addEventListener('click',()=>{const s=parseInt(d.dataset.s);if(!isNaN(s))upd(s)}));
+
+// Hover tooltips on SVG nodes
+const tip=document.getElementById('tip');
+const svgW=document.querySelector('.svg-w');
+
+document.querySelectorAll('.node-g').forEach(g=>{
+  g.addEventListener('mouseenter',e=>{
+    const t=g.dataset.tip;if(!t)return;
+    tip.textContent=t;
+    tip.classList.add('show');
+    positionTip(e);
+  });
+  g.addEventListener('mousemove',positionTip);
+  g.addEventListener('mouseleave',()=>{tip.classList.remove('show')});
+});
+
+function positionTip(e){
+  const r=svgW.getBoundingClientRect();
+  let x=e.clientX-r.left+14;
+  let y=e.clientY-r.top-35;
+  if(x+220>r.width)x=e.clientX-r.left-230;
+  if(y<0)y=e.clientY-r.top+20;
+  tip.style.left=x+'px';
+  tip.style.top=y+'px';
+}
+</script>
+</body>
+</html>
