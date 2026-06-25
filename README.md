@@ -33,6 +33,8 @@ Maybe I'll address one more question too. Such as, how would it plan in states t
 
 Yeah the idea of world arm not being able to "plan in states without memories" is a real issue but I also thought through experimentation I could address it. Importantly, the idea of not predicting actions with the world model is huge. Having separate blocks would be necessary in a situation like this. Action prediction in the original ARM block and future latent state prediction in the World ARM block. How is this a solution? Well basically, the latent image embedding can be predicted in the same way as even the original "World Model" paper. Albeit, starting with a memory first. Now in this setup, maybe a secondary residual, basically just informed after a value encoder projection is used. In a setup like that, the "weights * values" part would just be a helper function basically conditioned on memory. The next part of the World-ARM block would do what any world model all ready does. Just learns higher resolution future latents. Then MCTS becomes possible with this dual ARM block setup. Pretty damn clean and neat huh?
 
+To test few-shot capability, I propose a second spatial hash as short-term memory, with the system dynamically routing between the two. When short-term wins, it's learning from live experience.
+
 Anyways, this dumb, yet brilliant idea, it was all me. I get the credit, I get some congratulations, and now I finally have the confidence enough to pick my head up and say - "I think I might have found something". Without the delusion of actually believing I'll hear any other response but "Is this what you think you found?" followed by a cited paper or an academic roast.
 
 ### Original Diagram
