@@ -11,7 +11,7 @@ On the other hand, I took with me, a large severance; which included a large amo
 
 The game in question? A Color Switch sequel. Not Color Switch 2. Color Switch with procedurally generated worlds soley based on Flow-ish Maps. You know the game "Flow Free"? That's how I decided to make all the maps in the game. 5 gameplay styles similar to the original Color Switch modes. Albeit, they are played on maps that are shaped like Flow Free grids. It was essentially a technical achievement layered on top of the original game. All procedurally generated & tested automatically with player progression analysis. Just a tad bit of a flex.
 
-The business relations officer of Color Switch gave me permission to include any of Color Switch's source code in this new game. The day he did that, I moved the sparse mixture of experts, the pieces of hyper associative recall memory, and many more important gameplay related features to the game. Yet, I never integrated any of it. Nothing stopped me from picking up my pieces, inspired by Rovio's pioneering ML work, and finally having the chance to observe automated KPI scaling. I could continue on.
+The business relations officer of Color Switch gave me permission to include any of Color Switch's source code in this new game. The day he did that, I moved the sparse mixture of experts, the pieces of hyper associative recall memory, and many more important gameplay related features to the game. Yet, I never integrated any of it. Nothing stopped me from picking up my pieces, inspired by Rovio's pioneering ML work, and finally having the chance to observe automated KPI scaling.
 
 "Color Flow" as it became to be known, could become my new machine learning laboratory. Maybe I could close the loop on something else too.
 
